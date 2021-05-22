@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            border: none;
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+
+        svg {
+            border: none;
+            overflow: visible;
+        }
+
+
+        h1 {
+            border: none;
+        }
+
+        .pop-up{
+           position: absolute;
+           border: 1px solid black;
+           width: 180px;
+           height: 60px;
+           background-color: white;
+           padding: 10px; 
+           font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+           font-size: 12px;
+           pointer-events: none;
+           opacity: 0;
+        }
+
+
+    </style>
+    <!-- add your script blocks at the end -->
+
+</head>
+
+<body>
+    <div class="chart-container">
+        
+        <h1 class="headline">
+            Evangelical Protestant Population, by County (2010)
+        </h1>
+
+        <svg width="1050px" height="500px">
+            
+        </svg>
+       
+    </div>
+
+    <div class="key" style = "position:relative; left:750px; top:-20px">
+   
+        <object 
+        data="dataviz-key2.svg";
+        width=300; 
+        ></object>
+
+    </div>
+
+    <div class="pop-up">
+    </div>
+
+    <div class="test">
+        </div>
+
+</body>
+
+
+
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<!-- load topojson script -->
+<script src="https://unpkg.com/topojson@3"></script>
+
+<script>
+    console.log({ d3 })
+    console.log({ topojson })
+
+    // //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+    Promise.all([ //waits for all the data to load, then when loaded will return it all in one array called res
+        d3.json('8topo5.json'),
+    ])
+    .then(ready)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    function ready(res) {
+        console.log(res[0])
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.county);
+        let state = topojson.feature(raw, raw.objects.state);
+
+        let width = 1050;
+        let height = 500;
+
+        console.log(county, state)
+
+        let svg = d3.select("body").select("svg")
+
+        let myProjection = d3.geoAlbersUsa()
+            .fitSize([width, height], county)
+
+        //path function
+        let path = d3.geoPath()
+            .projection(myProjection)
+
+        let innerlines = topojson.mesh(raw, raw.objects.state, function (a, b) {
+            return a != b;
+        });
+
+
+        //    let county2 = county.filter(function (d){
+        //        return county.features != NaN;
+        //    })
+
+        let popup = d3.select(".pop-up");
+
+        console.log(county)
+
+        let counties = svg
+            .selectAll(".counties")
+            .data(county.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", d => {
+                return d.properties.fill
+            })
+            .style("stroke", "#000")
+            .style("stroke-width", 0.1)
+            .attr("class", function (d) { return "county p-" + d.properties.GEOID })
+
+
+        svg
+            .selectAll(".states")
+            .data(state.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", "none")
+            .style("stroke", "none")
+            .style("pointer-events", "none")
+
+
+        let states = svg
+            .append("path")
+            .attr("d", path(innerlines))
+            .style("fill", "none")
+            .style("stroke", "#333")
+            .style("stroke-width", 1)
+            .style("pointer-events", "none")
+
+
+            svg.append("text")
+            .text("Source: ASARB's U.S. Religion Census 2010")
+            .attr("x", 580)
+            .attr("y", height + 75)
+            .style("font-size", 14)
+            .style("fill", "gray")
+                
+           
+            counties.on("mouseover", (event, d) => {
+                console.log(event)
+
+                //let lang = "In " + d.properties.NAMELSAD + ", " + d.properties.STNAME + " there were roughly " + Math.round(d.properties.EVANRATE2010) + " white evangelical Protestants per 1000 residents in 2010."
+                if(d.properties.fill != "#eee") {
+                    var lang2 = "In " + d.properties.NAMELSAD + ", " + d.properties.STNAME + ", roughly " + Math.round(d.properties.EVANRATE2010)/10 + "% of residents were evangelical Protestants in 2010."
+                } else {
+                    var lang2 = "In " + d.properties.NAMELSAD + ", " + d.properties.STNAME + ", there was insufficient data on the evangelical Protestant population in 2010."
+                }
+            
+
+                popup
+                    .style("left", (event.x + 10) + "px")
+                    .style("top", (event.y + 10) + "px")
+                    .html(lang2)
+                    .style("opacity", 1)
+
+            //    counties
+            //     .style("stroke", "#333333")
+            //     .style("stroke-width", .5)
+            //     .style("fill", "#c0cad8")
+            //     .style("fill-opacity", .5)
+
+            svg.select(".p-" + d.properties.GEOID)
+                .style("stroke", "yellow")
+                .style("stroke-width", 2.5)
+                .style("fill", d => {
+                return d.properties.fill
+            })
+                .style("fill-opacity", 1)
+                .raise()
+
+            })
+
+            counties.on("mouseout", (event, d) => {
+
+                popup
+                    .style("opacity", 0)
+
+            counties
+                .style("fill", d => {
+                return d.properties.fill
+            })
+                .style("stroke", "#000")
+                .style("stroke-width", 0.1)
+
+            
+               
+
+            
+            }
+
+            )}
+
+</script>
